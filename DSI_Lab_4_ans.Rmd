@@ -162,6 +162,7 @@ ggplot(wss_values,
   geom_vline(xintercept = 3,
              linetype = 2,
              col = "blue") + 
+  theme_minimal() +
   labs(
     x = "Number of Clusters k",
     y = "Total Within Sum of Square",
