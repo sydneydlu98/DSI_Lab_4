@@ -1,0 +1,170 @@
+---
+title: "DSI_Lab_4"
+author: "Dingxin Lu"
+date: "11/10/2021"
+output: 
+  html_document:
+   df_print: paged
+   toc: true 
+   toc_depth: 2  
+   number_sections: false
+   toc_float:
+     collapsed: true
+     smooth_scroll: true
+---
+
+[My github link] https://github.com/sydneydlu98/DSI_Lab_4
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.align = "center")
+```
+
+```{r, message=FALSE}
+## load all the library
+library(fields)
+library(readr)
+library(tidyverse)
+library(GGally)
+```
+
+# Problem 1
+
+Write your own k-means clustering function
+
+* Name your function k_means
+* This function should have three arguments:
+  + data for the dataset to be clustered
+  + k for the number of clusters k
+  + iter for the number of iterations performed
+* In your function, start by randomly assigning each observation to a cluster and calculate the centroids for each of the cluster
+* In the loop (loop through for the number of iterations)
+  + Calculate the distance from each point to each of the centroids (Hint: I used fields::rdist for this)
+  + Calculate the minimum distance for each point to the centroids (Hint: I used an apply statement with which.min)
+  + Calculate the new centroids (and then repeat!)
+* Return the cluster assignments for each of the observations in the dataset
+* Don’t forget to set a seed!
+
+```{r problem1}
+# set seed
+set.seed(100)
+
+# set function k_means
+# data for the dataset to be clustered
+# k for the number of clusters k
+#iter for the number of iterations performed
+k_means <- function(data, k, iter) {
+  
+  # randomly assigning each observation to a cluster
+  data_cluster <- data %>%
+    mutate(cluster = sample(1:k,
+                            nrow(data),
+                            replace = TRUE))
+  
+  # calculate the centroids for each of the cluster
+  centroids <- data_cluster %>%
+    group_by(cluster) %>%
+    summarise(across(everything(),
+                     mean))
+  
+  # each point in the dataset
+  point <- data_cluster %>%
+    select(-cluster)
+  
+  # loop through for the number of iterations
+  for (i in 1:iter) {
+    
+    # Calculate the distance from each point to each of the centroids
+    distsToCenters <- rdist(centroids[,-1],
+                            point)
+    
+    # Calculate the minimum distance for each point to the centroids
+    minDis <- apply(distsToCenters,
+                    2,
+                    which.min)
+    
+    # Calculate the new centroids
+    # and repeat
+    data %>%
+      mutate(cluster = minDis) %>%
+      group_by(cluster) %>%
+      summarise(across(everything(),
+                       mean))
+  }
+  
+  # Return the cluster assignments for each of the observations
+  return(minDis)
+}
+```
+
+# Problem 2
+
+Cluster the iris dataset (Hint: Don’t forget to scale the data before you cluster!) using your function k_means. Try this with 3 clusters. Use GGally:ggpairs to visualize the four variables colored by your cluster assignment.
+
+```{r problem2}
+# set seed
+set.seed(100)
+
+# adjustment for dataset iris
+iris_new <- iris %>%
+  select(-Species)
+
+# scale the dataset iris
+scaled_iris <- scale(iris_new)
+
+# cluster the iris dataset
+# cluster the dataset with 3 clusters and 50 iterations
+iris_kmean <- k_means(as.data.frame(scaled_iris), 3, 50)
+iris_kmean
+
+# adjust the dataset for visualization
+iris_final <- iris_new %>%
+  mutate(new_cluster = as.factor(iris_kmean))
+
+# visualize the four variables colored by your cluster assignment
+ggpairs(iris_final,
+        ggplot2::aes(colour = new_cluster),
+        title = "Visualization of four variables colored by specific cluster assignment") 
+```
+
+# Problem 3
+
+Using the code from the lecture notes and the kmeans function in R, produce the associated elbow plot (i.e., a plot of within-cluster sum of squares vs. cluster size). Given your plot, what is the appropriate number of clusters for the iris dataset? Why?
+
+```{r problem3}
+# set seed
+set.seed(100)
+
+# function for Total Within Sum of Square (WSS)
+wss <- function(k, data) {
+  kmeans(data, k, nstart = 10)$tot.withinss
+}
+
+# examining the total within-cluster sum of squares 
+# for different numbers of clusters 
+# (1 through 15 here)
+k_values <- 1:15
+
+wss_values <- map_dbl(k_values, wss, 
+                      data = scaled_iris)
+
+wss_values <- data.frame(wss = wss_values,
+                         k = k_values)
+
+# produce the associated elbow plot
+ggplot(wss_values,
+       aes(x = k,
+           y = wss)) +
+  geom_point() +
+  geom_line(lwd = 1) +
+  # add line for better visualization
+  geom_vline(xintercept = 3,
+             linetype = 2,
+             col = "blue") + 
+  labs(
+    x = "Number of Clusters k",
+    y = "Total Within Sum of Square",
+    title = "Optimal Number of Clusters",
+    subtitle = "Elbow Plot"
+  )
+```
+
