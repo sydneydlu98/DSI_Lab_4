@@ -171,3 +171,4 @@ ggplot(wss_values,
   )
 ```
 
+The optimal number of clusters for this data set should be 3 (demonstrated in the plot). Because when number of clusters k is 3 and onwards, the total within sum of square reduces slowly, so we would know 3 is the optimal number of clusters.
